@@ -1,0 +1,998 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <h1>Settings</h1>
+
+    <!-- Model Configuration Section -->
+    <section class="llm-section">
+        <div class="section-header">
+            <h2>Models</h2>
+        </div>
+
+        <!-- Expensive Model Tier -->
+        <div class="model-tier">
+            <div class="tier-header">
+                <span class="tier-label expensive">Expensive</span>
+                <span class="tier-hint">Default for all topics</span>
+            </div>
+            <div class="tier-config">
+                <div class="provider-switch">
+                    <button class="btn provider-btn {{ 'active' if expensive_provider == 'gemini' else '' }}" onclick="setTierProvider('expensive', 'gemini')" data-tier="expensive" data-provider="gemini">
+                        Gemini
+                    </button>
+                    <button class="btn provider-btn {{ 'active' if expensive_provider == 'claude' else '' }}" onclick="setTierProvider('expensive', 'claude')" data-tier="expensive" data-provider="claude">
+                        Claude
+                    </button>
+                    <button class="btn provider-btn {{ 'active' if expensive_provider == 'openai' else '' }}" onclick="setTierProvider('expensive', 'openai')" data-tier="expensive" data-provider="openai">
+                        OpenAI
+                    </button>
+                    <button class="btn provider-btn {{ 'active' if expensive_provider == 'openrouter' else '' }}" onclick="setTierProvider('expensive', 'openrouter')" data-tier="expensive" data-provider="openrouter">
+                        OpenRouter
+                    </button>
+                </div>
+                <div class="model-input-row">
+                    <input type="text" id="expensive-model" class="model-input" value="{{ expensive_model }}" placeholder="Model name (e.g. gemini-3.1-pro-preview)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Cheap Model Tier -->
+        <div class="model-tier">
+            <div class="tier-header">
+                <span class="tier-label cheap">Cheap</span>
+                <span class="tier-hint">Used when topic has cheap toggle on</span>
+            </div>
+            <div class="tier-config">
+                <div class="provider-switch">
+                    <button class="btn provider-btn {{ 'active' if cheap_provider == 'gemini' else '' }}" onclick="setTierProvider('cheap', 'gemini')" data-tier="cheap" data-provider="gemini">
+                        Gemini
+                    </button>
+                    <button class="btn provider-btn {{ 'active' if cheap_provider == 'claude' else '' }}" onclick="setTierProvider('cheap', 'claude')" data-tier="cheap" data-provider="claude">
+                        Claude
+                    </button>
+                    <button class="btn provider-btn {{ 'active' if cheap_provider == 'openai' else '' }}" onclick="setTierProvider('cheap', 'openai')" data-tier="cheap" data-provider="openai">
+                        OpenAI
+                    </button>
+                    <button class="btn provider-btn {{ 'active' if cheap_provider == 'openrouter' else '' }}" onclick="setTierProvider('cheap', 'openrouter')" data-tier="cheap" data-provider="openrouter">
+                        OpenRouter
+                    </button>
+                </div>
+                <div class="model-input-row">
+                    <input type="text" id="cheap-model" class="model-input" value="{{ cheap_model }}" placeholder="Model name (e.g. gpt-5.6-terra)">
+                </div>
+            </div>
+        </div>
+
+        <div class="model-actions">
+            <button class="btn btn-primary" onclick="saveModelSettings()">Save Models</button>
+        </div>
+    </section>
+
+    <section class="email-section">
+        <div class="section-header">
+            <h2>Email Recipients</h2>
+        </div>
+        <div class="email-settings">
+            <div class="email-field">
+                <label for="primary-recipient">Primary Recipient</label>
+                <input
+                    id="primary-recipient"
+                    type="text"
+                    value="{{ primary_recipient if primary_recipient else 'Managed via EMAIL_TO secret / env var' }}"
+                    readonly
+                >
+                <p class="field-hint">This stays the default delivery target for all outgoing emails.</p>
+            </div>
+
+            <div class="email-field">
+                <label for="extra-recipients">Additional Recipients</label>
+                <textarea id="extra-recipients" rows="4" placeholder="friend@example.com&#10;another@example.com">{{ extra_recipient_emails | join('\n') }}</textarea>
+                <p class="field-hint">One email per line. Every generated email will be sent to you plus these addresses.</p>
+            </div>
+
+            <div class="email-actions">
+                <button class="btn btn-primary" onclick="saveRecipients()">Save Recipients</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Scheduler Control Section -->
+    <section class="scheduler-section">
+        <div class="section-header">
+            <h2>Daily Scheduler</h2>
+        </div>
+        <div class="scheduler-control">
+            <div class="scheduler-status">
+                <span class="status-indicator {{ 'paused' if scheduler_paused else 'active' }}"></span>
+                <span class="status-text">
+                    {% if scheduler_paused %}
+                        Scheduler is <strong>paused</strong> — no emails will be sent tomorrow
+                    {% else %}
+                        Scheduler is <strong>active</strong> — emails will be sent at 10:00
+                    {% endif %}
+                </span>
+            </div>
+            <button id="scheduler-toggle" class="btn {{ 'btn-primary' if scheduler_paused else 'btn-danger' }}" onclick="toggleScheduler()">
+                {% if scheduler_paused %}
+                    Resume Scheduler
+                {% else %}
+                    Pause Scheduler
+                {% endif %}
+            </button>
+        </div>
+    </section>
+
+    <!-- Feedback Section (Collapsible) -->
+    <details class="feedback-accordion" open>
+        <summary class="accordion-header">
+            <h2>Feedback & Preferences</h2>
+            <span class="accordion-hint">Click to expand/collapse</span>
+        </summary>
+
+        <div class="accordion-content">
+            <!-- Learned Preferences Section -->
+            <section class="preferences-section">
+                <div class="section-header">
+                    <h3>Current Learned Preferences</h3>
+                    <div class="header-actions">
+                        <button id="edit-btn" class="btn btn-secondary" onclick="toggleEdit()">Edit</button>
+                        <button id="save-btn" class="btn btn-primary" onclick="savePreferences()" style="display: none;">Save</button>
+                        <button id="cancel-btn" class="btn btn-ghost" onclick="cancelEdit()" style="display: none;">Cancel</button>
+                    </div>
+                </div>
+                <div class="preferences-content">
+                    <div id="preferences-view" class="preferences-text">{{ learned_preferences }}</div>
+                    <textarea id="preferences-edit" class="preferences-editor" style="display: none;">{{ learned_preferences }}</textarea>
+                </div>
+                <p class="preferences-hint">These preferences are injected into every content generation. Edit carefully.</p>
+            </section>
+
+            <!-- Stats Summary -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>{{ summary.get('total_global', 0) }}</h3>
+                        <p>Global Feedbacks</p>
+                    </div>
+                    {% for topic, count in summary.get('topic_counts', {}).items() %}
+                        <div class="stat-card topic-stat">
+                            <h3>{{ count }}</h3>
+                            <p>{{ topic }}</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Global Feedback Log -->
+            <section class="feedback-section">
+                <h3>Global Feedback Log</h3>
+                <p class="section-hint">These feedbacks were classified as "global" (style/structure preferences) and used for preference synthesis.</p>
+
+                {% if global_feedbacks %}
+                    <div class="feedback-list">
+                        {% for entry in global_feedbacks %}
+                            <div class="feedback-card" data-index="{{ loop.index0 }}">
+                                <div class="feedback-header">
+                                    <div class="feedback-meta">
+                                        <span class="feedback-date">{{ entry.get('date', '')[:10] }}</span>
+                                        <span class="feedback-topic">{{ entry.get('topic_id', 'unknown') }}</span>
+                                        {% if entry.get('topic_type') %}
+                                            <span class="feedback-type type-{{ entry.get('topic_type', 'general') }}">{{ entry.get('topic_type', 'general') }}</span>
+                                        {% endif %}
+                                        {% if entry.get('has_persona') %}
+                                            <span class="feedback-persona">has persona</span>
+                                        {% endif %}
+                                    </div>
+                                    <button class="btn-delete" onclick="deleteFeedback({{ entry.get('_original_index', loop.index0) }})" title="Delete this feedback">×</button>
+                                </div>
+
+                                <div class="feedback-text">
+                                    {{ entry.get('feedback', 'No feedback text')[:500] }}
+                                    {% if entry.get('feedback', '')|length > 500 %}...{% endif %}
+                                </div>
+
+                                {% if entry.get('content') %}
+                                    <details class="feedback-context">
+                                        <summary>Show content excerpt</summary>
+                                        <div class="context-content">{{ entry.get('content', '')[:800] }}...</div>
+                                    </details>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="empty-state">No global feedbacks yet. Feedbacks about style, structure, and tone will appear here.</p>
+                {% endif %}
+            </section>
+        </div>
+    </details>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.settings-page {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.settings-page h1 {
+    margin-bottom: 32px;
+}
+
+/* LLM Provider Section */
+.llm-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.llm-section h2 {
+    margin: 0 0 16px;
+    font-size: 1.3em;
+}
+
+.llm-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.llm-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.provider-badge {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9em;
+    letter-spacing: 0.5px;
+}
+
+.provider-badge.gemini {
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+}
+
+.provider-badge.claude {
+    background: linear-gradient(135deg, #d97706, #ea580c);
+    color: white;
+}
+
+.provider-badge.openai {
+    background: linear-gradient(135deg, #10a37f, #1a7f64);
+    color: white;
+}
+
+.model-name {
+    color: var(--text-light);
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+/* Model Tiers */
+.model-tier {
+    padding: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.tier-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.tier-label {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85em;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.tier-label.expensive {
+    background: linear-gradient(135deg, #d97706, #ea580c);
+    color: white;
+}
+
+.tier-label.cheap {
+    background: linear-gradient(135deg, #10a37f, #059669);
+    color: white;
+}
+
+.tier-hint {
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.tier-config {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.model-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.model-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.model-input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.model-actions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 8px;
+}
+
+.provider-switch {
+    display: flex;
+    gap: 8px;
+}
+
+.provider-btn {
+    padding: 8px 20px;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.provider-btn:hover {
+    border-color: var(--primary);
+}
+
+.provider-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* Scheduler Section */
+.scheduler-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+}
+
+.email-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.email-section h2 {
+    margin: 0 0 16px;
+    font-size: 1.3em;
+}
+
+.email-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.email-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.email-field input,
+.email-field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.email-field textarea {
+    resize: vertical;
+    min-height: 110px;
+}
+
+.field-hint {
+    margin: 8px 0 0;
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.email-actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.scheduler-section h2 {
+    margin: 0 0 16px;
+    font-size: 1.3em;
+}
+
+.scheduler-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.scheduler-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.status-indicator.active {
+    background: var(--success, #22c55e);
+    box-shadow: 0 0 8px var(--success, #22c55e);
+}
+
+.status-indicator.paused {
+    background: var(--warning, #f59e0b);
+    box-shadow: 0 0 8px var(--warning, #f59e0b);
+}
+
+.status-text {
+    color: var(--text);
+}
+
+/* Feedback Accordion */
+.feedback-accordion {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 32px;
+}
+
+.accordion-header {
+    padding: 24px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+}
+
+.accordion-header h2 {
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.accordion-hint {
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.accordion-content {
+    padding: 0 24px 24px;
+}
+
+details[open] .accordion-header {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+
+/* Preferences Section */
+.preferences-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.preferences-text {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.preferences-editor {
+    width: 100%;
+    min-height: 300px;
+    padding: 20px;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.95em;
+    line-height: 1.6;
+    resize: vertical;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.preferences-hint {
+    margin-top: 12px;
+    font-size: 0.85em;
+    color: var(--text-light);
+}
+
+/* Stats Section */
+.stats-section {
+    margin-bottom: 24px;
+}
+
+.stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 20px;
+    border-radius: 8px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 2em;
+    margin: 0;
+    color: var(--primary);
+}
+
+.stat-card p {
+    margin: 8px 0 0;
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.topic-stat {
+    background: var(--card-bg);
+}
+
+/* Feedback Section */
+.feedback-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.feedback-section h3 {
+    margin: 0 0 8px;
+    font-size: 1.1em;
+}
+
+.section-hint {
+    color: var(--text-light);
+    font-size: 0.9em;
+    margin-bottom: 20px;
+}
+
+.feedback-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feedback-card {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 16px;
+    border-left: 4px solid var(--primary);
+}
+
+.feedback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.feedback-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.feedback-date {
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.feedback-topic {
+    background: var(--bg);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    border: 1px solid var(--border);
+}
+
+.feedback-type {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 500;
+    background: var(--bg);
+    color: var(--text-light);
+    border: 1px solid var(--border);
+}
+
+.feedback-type.type-book {
+    color: var(--primary);
+}
+
+.feedback-type.type-general {
+    color: var(--success);
+}
+
+.feedback-persona {
+    background: var(--bg);
+    color: var(--secondary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    border: 1px solid var(--border);
+}
+
+.btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+}
+
+.btn-delete:hover {
+    color: var(--danger);
+}
+
+.feedback-text {
+    color: var(--text);
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.feedback-context {
+    margin-top: 12px;
+}
+
+.feedback-context summary {
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.context-content {
+    margin-top: 8px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--text-light);
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-light);
+    padding: 40px;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--border);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-light);
+}
+
+.btn-ghost:hover {
+    background: var(--bg);
+}
+
+.btn-danger {
+    background: var(--danger, #ef4444);
+    color: white;
+}
+
+.btn-danger:hover {
+    opacity: 0.9;
+}
+</style>
+
+<script>
+let originalPreferences = '';
+
+// Track current tier providers in memory
+const defaultModels = {
+    expensive: {{ default_models | tojson }},
+    cheap: {{ cheap_default_models | tojson }}
+};
+
+let tierProviders = {
+    expensive: '{{ expensive_provider }}',
+    cheap: '{{ cheap_provider }}'
+};
+
+function setTierProvider(tier, provider) {
+    tierProviders[tier] = provider;
+    
+    // Update button active states for this tier
+    document.querySelectorAll(`.provider-btn[data-tier="${tier}"]`).forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.provider === provider);
+    });
+
+    // Auto-update model input field to provider's default model
+    const inputEl = document.getElementById(`${tier}-model`);
+    if (inputEl && defaultModels[tier] && defaultModels[tier][provider]) {
+        inputEl.value = defaultModels[tier][provider];
+    }
+}
+
+async function saveModelSettings() {
+    const expensiveModel = document.getElementById('expensive-model').value.trim();
+    const cheapModel = document.getElementById('cheap-model').value.trim();
+    
+    if (!expensiveModel) {
+        alert('Expensive model name cannot be empty');
+        return;
+    }
+    if (!cheapModel) {
+        alert('Cheap model name cannot be empty');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/model-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                expensive_provider: tierProviders.expensive,
+                expensive_model: expensiveModel,
+                cheap_provider: tierProviders.cheap,
+                cheap_model: cheapModel
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Model settings saved!');
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error saving model settings: ' + err.message);
+    }
+}
+
+async function toggleScheduler() {
+    const btn = document.getElementById('scheduler-toggle');
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+
+    try {
+        const response = await fetch('/api/scheduler/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload to show updated state
+            location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert('Error toggling scheduler: ' + err.message);
+        btn.disabled = false;
+    }
+}
+
+async function saveRecipients() {
+    const textarea = document.getElementById('extra-recipients');
+    const payload = textarea.value;
+
+    try {
+        const response = await fetch('/api/email-recipients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ extra_recipients: payload })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            textarea.value = (result.extra_recipient_emails || []).join('\n');
+            alert('Recipients saved!');
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error saving recipients: ' + err.message);
+    }
+}
+
+function toggleEdit() {
+    const viewEl = document.getElementById('preferences-view');
+    const editEl = document.getElementById('preferences-edit');
+    const editBtn = document.getElementById('edit-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    originalPreferences = editEl.value;
+
+    viewEl.style.display = 'none';
+    editEl.style.display = 'block';
+    editBtn.style.display = 'none';
+    saveBtn.style.display = 'inline-block';
+    cancelBtn.style.display = 'inline-block';
+
+    editEl.focus();
+}
+
+function cancelEdit() {
+    const viewEl = document.getElementById('preferences-view');
+    const editEl = document.getElementById('preferences-edit');
+    const editBtn = document.getElementById('edit-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    editEl.value = originalPreferences;
+
+    viewEl.style.display = 'block';
+    editEl.style.display = 'none';
+    editBtn.style.display = 'inline-block';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+}
+
+async function savePreferences() {
+    const editEl = document.getElementById('preferences-edit');
+    const newPreferences = editEl.value.trim();
+
+    if (!newPreferences) {
+        alert('Preferences cannot be empty');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferences: newPreferences })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            document.getElementById('preferences-view').textContent = newPreferences;
+            cancelEdit();
+            alert('Preferences saved!');
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error saving preferences: ' + err.message);
+    }
+}
+
+async function deleteFeedback(index) {
+    if (!confirm('Delete this feedback entry? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/feedback/${index}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error deleting feedback: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

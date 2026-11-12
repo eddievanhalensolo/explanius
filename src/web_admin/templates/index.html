@@ -1,0 +1,505 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Dashboard</h1>
+        <div class="stats-inline">
+            <span class="stat-pill">{{ active_topics }} active</span>
+            <span class="stat-pill secondary">{{ total_topics }} total topics</span>
+        </div>
+    </div>
+
+    <!-- Daily Topic Suggestion -->
+    <section class="suggestion-card" id="suggestion-card">
+        <div class="suggestion-header">
+            <span class="suggestion-label">Topic Suggestion</span>
+            <button id="refresh-suggestion" class="btn-refresh" title="New suggestion">↻</button>
+        </div>
+        <div id="suggestion-content" class="suggestion-content">
+            <div class="suggestion-idle">Click ↻ to generate a topic suggestion.</div>
+        </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="quick-actions-grid">
+        <a href="{{ url_for('topic_create') }}" class="action-tile">
+            <span class="action-icon">+</span>
+            <span class="action-label">Create Topic</span>
+        </a>
+        <a href="{{ url_for('topics_list') }}" class="action-tile">
+            <span class="action-icon">◎</span>
+            <span class="action-label">Manage Topics</span>
+        </a>
+        <a href="{{ url_for('feedback_viewer') }}" class="action-tile">
+            <span class="action-icon">✎</span>
+            <span class="action-label">Preferences</span>
+        </a>
+        <a href="{{ url_for('archive_list') }}" class="action-tile">
+            <span class="action-icon">◫</span>
+            <span class="action-label">Archive</span>
+        </a>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    margin: 0;
+}
+
+.stats-inline {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.stat-pill {
+    background: var(--primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.stat-pill.secondary {
+    background: var(--bg);
+    color: var(--text-light);
+    border: 1px solid var(--border);
+}
+
+/* Suggestion Card */
+.suggestion-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.suggestion-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.btn-refresh {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+    background: var(--bg);
+    color: var(--primary);
+}
+
+.btn-refresh.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.suggestion-content {
+    min-height: 60px;
+}
+
+.suggestion-loading {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+/* Teaser View */
+.suggestion-teaser {
+    cursor: pointer;
+}
+
+.suggestion-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+}
+
+.suggestion-tagline {
+    color: var(--text-light);
+    font-size: 0.95rem;
+    margin-bottom: 0.75rem;
+}
+
+.suggestion-rationale-teaser {
+    color: var(--primary);
+    font-size: 0.95rem;
+    font-style: italic;
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.suggestion-rationale {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border-left: 3px solid var(--primary);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.suggestion-rationale strong {
+    color: var(--primary);
+}
+
+.suggestion-expand-hint {
+    font-size: 0.8rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.suggestion-expand-hint .arrow {
+    transition: transform 0.2s;
+}
+
+.suggestion-card.expanded .suggestion-expand-hint .arrow {
+    transform: rotate(90deg);
+}
+
+/* Expanded View */
+.suggestion-details {
+    display: none;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+}
+
+.suggestion-card.expanded .suggestion-details {
+    display: block;
+}
+
+.suggestion-section {
+    margin-bottom: 1.25rem;
+}
+
+.suggestion-section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.suggestion-section-content {
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 0.9rem;
+}
+
+.suggestion-task-prompt {
+    background: var(--bg);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestion-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.btn-activate {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-activate:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-activate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-skip {
+    background: transparent;
+    color: var(--text-light);
+    border: 1px solid var(--border);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-skip:hover {
+    background: var(--bg);
+}
+
+.suggestion-meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+
+.suggestion-frequency {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.suggestion-error {
+    color: var(--danger);
+    font-size: 0.9rem;
+}
+
+/* Quick Actions */
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
+
+.action-tile {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.2s;
+}
+
+.action-tile:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.action-icon {
+    display: block;
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary);
+}
+
+.action-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Success state */
+.suggestion-activated {
+    text-align: center;
+    padding: 2rem;
+}
+
+.suggestion-activated .checkmark {
+    font-size: 3rem;
+    color: var(--success);
+    margin-bottom: 1rem;
+}
+
+.suggestion-activated h3 {
+    color: var(--text);
+    margin-bottom: 0.5rem;
+}
+
+.suggestion-activated p {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.suggestion-activated a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.suggestion-activated a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<script>
+let currentSuggestion = null;
+
+async function loadSuggestion(forceNew = false) {
+    const container = document.getElementById('suggestion-content');
+    const card = document.getElementById('suggestion-card');
+    const refreshBtn = document.getElementById('refresh-suggestion');
+
+    card.classList.remove('expanded');
+    refreshBtn.classList.add('spinning');
+    container.innerHTML = '<div class="suggestion-loading">Generating suggestion...</div>';
+
+    try {
+        const url = forceNew ? '/api/topic-suggestion?new=1' : '/api/topic-suggestion';
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            container.innerHTML = `<div class="suggestion-error">${data.error}</div>`;
+            currentSuggestion = null;
+        } else {
+            currentSuggestion = data;
+            renderSuggestion(data);
+        }
+    } catch (err) {
+        container.innerHTML = `<div class="suggestion-error">Failed to load suggestion</div>`;
+        currentSuggestion = null;
+    }
+
+    refreshBtn.classList.remove('spinning');
+}
+
+function renderSuggestion(data) {
+    const container = document.getElementById('suggestion-content');
+    const task = data.task || '';
+    const rationale = data.rationale || '';
+    // Extract first 150 chars of task as teaser
+    const teaser = task.substring(0, 150).replace(/\n/g, ' ').trim() + (task.length > 150 ? '...' : '');
+
+    // Build rationale HTML if present
+    const rationaleHtml = rationale ? `
+        <div class="suggestion-rationale">
+            <strong>Warum jetzt:</strong> ${escapeHtml(rationale)}
+        </div>
+    ` : '';
+
+    container.innerHTML = `
+        <div class="suggestion-teaser" onclick="toggleExpand()">
+            <div class="suggestion-title">${escapeHtml(data.topic_name)}</div>
+            ${rationale ? `<div class="suggestion-rationale-teaser">${escapeHtml(rationale)}</div>` : `<div class="suggestion-tagline">${escapeHtml(teaser)}</div>`}
+            <div class="suggestion-expand-hint">
+                <span class="arrow">→</span> Click to see details
+            </div>
+        </div>
+        <div class="suggestion-details">
+            ${rationaleHtml}
+            <div class="suggestion-section">
+                <div class="suggestion-section-label">Task Prompt</div>
+                <div class="suggestion-task-prompt">${escapeHtml(task)}</div>
+            </div>
+            <div class="suggestion-meta">
+                <span class="suggestion-frequency">📅 ${escapeHtml(data.timeline || 'Ongoing')}</span>
+                <span class="suggestion-frequency">🌐 ${escapeHtml(data.language || 'Deutsch')}</span>
+            </div>
+            <div class="suggestion-actions">
+                <button class="btn-activate" onclick="activateSuggestion()">Activate Topic</button>
+                <button class="btn-skip" onclick="loadSuggestion(true)">Skip, show another</button>
+            </div>
+        </div>
+    `;
+}
+
+function toggleExpand() {
+    const card = document.getElementById('suggestion-card');
+    card.classList.toggle('expanded');
+}
+
+async function activateSuggestion() {
+    if (!currentSuggestion) return;
+
+    const btn = document.querySelector('.btn-activate');
+    btn.disabled = true;
+    btn.textContent = 'Activating...';
+
+    try {
+        const response = await fetch('/api/topic-suggestion/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currentSuggestion)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const container = document.getElementById('suggestion-content');
+            container.innerHTML = `
+                <div class="suggestion-activated">
+                    <div class="checkmark">✓</div>
+                    <h3>Topic Activated!</h3>
+                    <p>"${escapeHtml(currentSuggestion.topic_name)}" is now active.</p>
+                    <p><a href="/topics/${result.topic_id}/edit">Edit topic</a> · <a href="/topics">View all topics</a></p>
+                </div>
+            `;
+            document.getElementById('suggestion-card').classList.remove('expanded');
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+            btn.disabled = false;
+            btn.textContent = 'Activate Topic';
+        }
+    } catch (err) {
+        alert('Error activating topic: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Activate Topic';
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.getElementById('refresh-suggestion').addEventListener('click', () => loadSuggestion(true));
+</script>
+{% endblock %}

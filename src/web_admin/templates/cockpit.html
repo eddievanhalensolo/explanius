@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+
+{% block title %}Generation Cockpit - Explanius{% endblock %}
+
+{% block content %}
+<div class="cockpit">
+    <div class="cockpit-header">
+        <h1>Heute Generieren</h1>
+    </div>
+
+    <!-- Foundation Topics -->
+    <section class="cockpit-section foundation-section" id="foundation-section">
+        <div class="section-header">
+            <span class="section-label">Das Fundament</span>
+        </div>
+        <div class="categories-container" id="foundation-categories">
+            <div class="loading">Loading...</div>
+        </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="cockpit-divider"></div>
+
+    <!-- Other Topics -->
+    <section class="cockpit-section others-section" id="others-section">
+        <div class="section-header">
+            <span class="section-label">Weitere Topics</span>
+        </div>
+        <div class="categories-container" id="other-categories">
+            <div class="loading">Loading...</div>
+        </div>
+    </section>
+
+    <!-- Generate Button -->
+    <div class="cockpit-actions">
+        <button id="generate-btn" class="btn-generate" disabled>
+            <span class="btn-icon">▶</span>
+            <span class="btn-text">Generieren</span>
+        </button>
+    </div>
+
+    <!-- Progress/Results -->
+    <div id="generation-progress" class="generation-progress hidden">
+        <div class="progress-header">
+            <span class="progress-label">Generierung läuft...</span>
+            <span class="progress-count" id="progress-count">0/0</span>
+        </div>
+        <div class="progress-results" id="progress-results"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.cockpit {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.cockpit-header {
+    margin-bottom: 2rem;
+}
+
+.cockpit-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+}
+
+/* Sections */
+.cockpit-section {
+    margin-bottom: 1.5rem;
+}
+
+.section-header {
+    margin-bottom: 1rem;
+}
+
+.section-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+/* Divider */
+.cockpit-divider {
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+}
+
+/* Categories Container */
+.categories-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* Category Group */
+.category-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.category-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 600;
+    padding-left: 0.25rem;
+    opacity: 0.7;
+}
+
+/* Topics Grid */
+.topics-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* Topic Item */
+.topic-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.topic-item:hover {
+    border-color: var(--primary);
+}
+
+.topic-item.selected {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.topic-item.selected .topic-days {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Nietzsche Icon */
+.nietzsche-icon {
+    width: 20px;
+    height: 20px;
+    filter: drop-shadow(0 0 2px rgba(255, 200, 100, 0.5));
+    transition: filter 0.2s;
+}
+
+.topic-item:hover .nietzsche-icon {
+    filter: drop-shadow(0 0 4px rgba(255, 200, 100, 0.8))
+            drop-shadow(0 0 8px rgba(255, 180, 50, 0.5));
+}
+
+/* Foundation Topics: Nietzsche STRAHLT mit Comic Starburst */
+.topic-item.is-foundation .nietzsche-icon {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 0 2px rgba(255, 215, 0, 0.9));
+    transform: translateX(5%);
+}
+
+.topic-item.is-foundation .nietzsche-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.topic-item.is-foundation .nietzsche-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: white;
+    clip-path: polygon(
+        50% 0%, 61% 25%, 88% 15%, 75% 38%, 100% 50%, 75% 62%,
+        88% 85%, 61% 75%, 50% 100%, 39% 75%, 12% 85%, 25% 62%,
+        0% 50%, 25% 38%, 12% 15%, 39% 25%
+    );
+    z-index: 1;
+    animation: starburst-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes starburst-pulse {
+    from {
+        transform: scale(1) rotate(0deg);
+        box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+    }
+    to {
+        transform: scale(1.15) rotate(10deg);
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
+    }
+}
+
+.topic-item.selected .nietzsche-icon {
+    filter: brightness(1.2) drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+}
+
+.topic-item.selected.is-foundation .nietzsche-wrapper::before {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* Foundation Add Button (appears on hover for non-foundation) */
+.foundation-toggle {
+    width: 20px;
+    height: 20px;
+    opacity: 0.3;
+    transition: opacity 0.15s;
+    cursor: pointer;
+}
+
+.topic-item:hover .foundation-toggle {
+    opacity: 0.8;
+}
+
+.topic-item.is-foundation .foundation-toggle {
+    opacity: 1;
+}
+
+/* Topic Name */
+.topic-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Days Badge */
+.topic-days {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-left: auto;
+    padding-left: 0.5rem;
+}
+
+.cheap-badge {
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #059669;
+    color: white;
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+.topic-item.selected .cheap-badge {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Generate Button */
+.cockpit-actions {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.btn-generate {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 1rem 2.5rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-generate:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-generate .btn-icon {
+    font-size: 1.2rem;
+}
+
+/* Progress */
+.generation-progress {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.generation-progress.hidden {
+    display: none;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.progress-label {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.progress-count {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.progress-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.progress-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.progress-item:last-child {
+    border-bottom: none;
+}
+
+.progress-item .status-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.progress-item.pending .status-icon {
+    color: var(--text-light);
+}
+
+.progress-item.running .status-icon {
+    color: var(--primary);
+    animation: pulse 1s infinite;
+}
+
+.progress-item.success .status-icon {
+    color: var(--success);
+}
+
+.progress-item.error .status-icon {
+    color: var(--danger);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.progress-item .topic-name {
+    flex: 1;
+}
+
+.progress-item .result-title {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+/* Loading */
+.loading {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    padding: 1rem 0;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .topics-grid {
+        flex-direction: column;
+    }
+
+    .topic-item {
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+let cockpitData = { foundation: [], others: [], categories: [] };
+let selectedTopics = new Set();
+
+// Load cockpit data
+async function loadCockpit() {
+    try {
+        const response = await fetch('/api/cockpit');
+        cockpitData = await response.json();
+
+        // Pre-select all foundation topics
+        cockpitData.foundation.forEach(group => {
+            group.topics.forEach(t => selectedTopics.add(t.topic_id));
+        });
+
+        renderFoundation();
+        renderOthers();
+        updateGenerateButton();
+    } catch (err) {
+        console.error('Failed to load cockpit:', err);
+    }
+}
+
+function renderTopicItem(t, isFoundation) {
+    if (isFoundation) {
+        return `
+            <div class="topic-item is-foundation ${selectedTopics.has(t.topic_id) ? 'selected' : ''}"
+                 data-topic-id="${t.topic_id}"
+                 onclick="toggleSelection('${t.topic_id}')">
+                <div class="nietzsche-wrapper"
+                     onclick="event.stopPropagation(); toggleFoundation('${t.topic_id}')"
+                     title="Aus Fundament entfernen">
+                    <img src="/static/img/nietzsche-head.png" class="nietzsche-icon">
+                </div>
+                <span class="topic-name">${escapeHtml(t.topic_name)}</span>
+                ${t.use_cheap_model ? '<span class="cheap-badge">$</span>' : ''}
+                <span class="topic-days">#${t.run_counter}</span>
+            </div>
+        `;
+    } else {
+        return `
+            <div class="topic-item ${selectedTopics.has(t.topic_id) ? 'selected' : ''}"
+                 data-topic-id="${t.topic_id}"
+                 onclick="toggleSelection('${t.topic_id}')">
+                <img src="/static/img/nietzsche-head.png" class="foundation-toggle nietzsche-icon"
+                      onclick="event.stopPropagation(); toggleFoundation('${t.topic_id}')"
+                      title="Zu Fundament hinzufügen">
+                <span class="topic-name">${escapeHtml(t.topic_name)}</span>
+                ${t.use_cheap_model ? '<span class="cheap-badge">$</span>' : ''}
+                <span class="topic-days">${formatDays(t.days_since_last_run)}</span>
+            </div>
+        `;
+    }
+}
+
+function renderCategoryGroups(container, groups, isFoundation) {
+    if (groups.length === 0 || groups.every(g => g.topics.length === 0)) {
+        container.innerHTML = isFoundation
+            ? '<div class="loading">Noch keine Foundation-Topics. Klick auf den Nietzsche-Kopf bei einem Topic um es hinzuzufügen.</div>'
+            : '<div class="loading">Keine weiteren aktiven Topics.</div>';
+        return;
+    }
+
+    container.innerHTML = groups.map(group => `
+        <div class="category-group">
+            <span class="category-label">${escapeHtml(group.category)}</span>
+            <div class="topics-grid">
+                ${group.topics.map(t => renderTopicItem(t, isFoundation)).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderFoundation() {
+    const container = document.getElementById('foundation-categories');
+    renderCategoryGroups(container, cockpitData.foundation, true);
+}
+
+function renderOthers() {
+    const container = document.getElementById('other-categories');
+    renderCategoryGroups(container, cockpitData.others, false);
+}
+
+function toggleSelection(topicId) {
+    if (selectedTopics.has(topicId)) {
+        selectedTopics.delete(topicId);
+    } else {
+        selectedTopics.add(topicId);
+    }
+
+    // Update UI
+    document.querySelectorAll(`.topic-item[data-topic-id="${topicId}"]`).forEach(el => {
+        el.classList.toggle('selected', selectedTopics.has(topicId));
+    });
+
+    updateGenerateButton();
+}
+
+async function toggleFoundation(topicId) {
+    try {
+        const response = await fetch(`/topics/${topicId}/toggle-foundation`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload cockpit to reflect changes
+            await loadCockpit();
+        }
+    } catch (err) {
+        console.error('Failed to toggle foundation:', err);
+    }
+}
+
+function updateGenerateButton() {
+    const btn = document.getElementById('generate-btn');
+    const count = selectedTopics.size;
+    btn.disabled = count === 0;
+    btn.querySelector('.btn-text').textContent = count > 0 ? `Generieren (${count})` : 'Generieren';
+}
+
+function formatDays(days) {
+    if (days >= 999) return 'neu';
+    if (days === 0) return 'heute';
+    if (days === 1) return '1d';
+    return `${days}d`;
+}
+
+// Generate selected topics
+async function generate() {
+    const btn = document.getElementById('generate-btn');
+    const progressDiv = document.getElementById('generation-progress');
+    const resultsDiv = document.getElementById('progress-results');
+    const countSpan = document.getElementById('progress-count');
+
+    const topicIds = Array.from(selectedTopics);
+
+    if (topicIds.length === 0) return;
+
+    // Disable button, show progress
+    btn.disabled = true;
+    btn.querySelector('.btn-text').textContent = 'Läuft...';
+    progressDiv.classList.remove('hidden');
+
+    // Flatten topics for lookup
+    const allTopics = [
+        ...cockpitData.foundation.flatMap(g => g.topics),
+        ...cockpitData.others.flatMap(g => g.topics)
+    ];
+
+    // Initialize progress items
+    resultsDiv.innerHTML = topicIds.map(id => {
+        const topic = allTopics.find(t => t.topic_id === id);
+        return `
+            <div class="progress-item pending" data-topic-id="${id}">
+                <span class="status-icon">○</span>
+                <span class="topic-name">${escapeHtml(topic?.topic_name || id)}</span>
+                <span class="result-title"></span>
+            </div>
+        `;
+    }).join('');
+
+    countSpan.textContent = `0/${topicIds.length}`;
+
+    try {
+        const response = await fetch('/api/cockpit/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic_ids: topicIds })
+        });
+
+        const result = await response.json();
+
+        // Update progress items with results
+        let successCount = 0;
+        result.results.forEach(r => {
+            const item = resultsDiv.querySelector(`[data-topic-id="${r.topic_id}"]`);
+            if (item) {
+                item.classList.remove('pending', 'running');
+                if (r.success) {
+                    item.classList.add('success');
+                    item.querySelector('.status-icon').textContent = '✓';
+                    item.querySelector('.result-title').textContent = r.title || '';
+                    successCount++;
+                } else {
+                    item.classList.add('error');
+                    item.querySelector('.status-icon').textContent = '✗';
+                    item.querySelector('.result-title').textContent = r.error || 'Failed';
+                }
+            }
+        });
+
+        countSpan.textContent = `${successCount}/${topicIds.length}`;
+        document.querySelector('.progress-label').textContent =
+            successCount === topicIds.length ? 'Fertig!' : 'Abgeschlossen (mit Fehlern)';
+
+    } catch (err) {
+        console.error('Generation failed:', err);
+        document.querySelector('.progress-label').textContent = 'Fehler: ' + err.message;
+    }
+
+    btn.disabled = false;
+    btn.querySelector('.btn-text').textContent = 'Generieren';
+    updateGenerateButton();
+
+    // Reload cockpit after generation
+    setTimeout(() => loadCockpit(), 2000);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Event listeners
+document.getElementById('generate-btn').addEventListener('click', generate);
+
+// Load on page load
+loadCockpit();
+</script>
+{% endblock %}

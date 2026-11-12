@@ -1,0 +1,747 @@
+{% extends "base.html" %}
+
+{% block title %}Create Topic - Explanius Admin{% endblock %}
+
+{% block content %}
+<!-- marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+/* Topic Preview Styles */
+.topic-preview-container {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--success);
+}
+
+.preview-header h3 {
+    color: var(--success);
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.preview-fields {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.preview-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.preview-field label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.preview-field input,
+.preview-field select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    background: white;
+}
+
+.preview-field input:focus,
+.preview-field select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.preview-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Task Section */
+.task-section {
+    margin-top: 1.5rem;
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.task-header label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.task-toggle {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.task-toggle button {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.task-toggle button.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.task-toggle button:hover:not(.active) {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Task Rendered View */
+.task-rendered {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.task-rendered h1, .task-rendered h2, .task-rendered h3,
+.task-rendered h4, .task-rendered h5, .task-rendered h6 {
+    color: #569cd6;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0.5rem;
+}
+
+.task-rendered h1:first-child, .task-rendered h2:first-child {
+    margin-top: 0;
+}
+
+.task-rendered p {
+    margin-bottom: 1rem;
+}
+
+.task-rendered ul, .task-rendered ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.task-rendered li {
+    margin-bottom: 0.25rem;
+}
+
+.task-rendered strong {
+    color: #ce9178;
+}
+
+.task-rendered em {
+    color: #9cdcfe;
+    font-style: italic;
+}
+
+.task-rendered code {
+    background: #333;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    color: #ce9178;
+}
+
+.task-rendered pre {
+    background: #2d2d2d;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.task-rendered blockquote {
+    border-left: 3px solid #569cd6;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #9cdcfe;
+    font-style: italic;
+}
+
+.task-rendered hr {
+    border: none;
+    border-top: 1px solid #444;
+    margin: 1.5rem 0;
+}
+
+/* Task Edit View */
+.task-edit {
+    display: none;
+}
+
+.task-edit textarea {
+    width: 100%;
+    min-height: 400px;
+    padding: 1rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    resize: vertical;
+    background: #1e1e1e;
+    color: #d4d4d4;
+}
+
+.task-edit textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* Preview Actions */
+.preview-actions-bar {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+/* PDF Upload Section */
+.pdf-upload-section {
+    background: var(--bg);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+}
+
+.pdf-upload-section h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+}
+</style>
+
+<div class="topic-create-page">
+    <h1>Create New Topic</h1>
+    <p class="subtitle">Have a conversation to design your learning topic</p>
+
+    <div class="chat-container">
+        <!-- Type Selection Screen -->
+        <div class="type-selection" id="typeSelection">
+            <div class="message assistant">
+                <div class="message-content">
+                    <p><strong>Willkommen!</strong> Was möchtest du lernen?</p>
+                </div>
+            </div>
+            <div class="type-buttons">
+                <button class="type-button" id="selectGeneral">
+                    <h3>Allgemeines Thema</h3>
+                    <p>Philosophie, Geschichte, Konzepte, etc.</p>
+                </button>
+                <button class="type-button" id="selectBook">
+                    <h3>Ein Buch</h3>
+                    <p>Ich habe ein PDF eines Buches</p>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Interface (hidden initially) -->
+        <div class="chat-messages" id="chatMessages" style="display: none;">
+        </div>
+
+        <div class="chat-input-container" id="chatInputContainer" style="display: none;">
+            <textarea id="userInput" placeholder="Type your message..." rows="3"></textarea>
+            <button id="sendButton" class="btn-primary">Send</button>
+        </div>
+
+        <!-- New Beautiful Topic Preview -->
+        <div class="topic-preview-container" id="topicPreview" style="display: none;">
+            <div class="preview-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--success)">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <h3>Topic bereit!</h3>
+            </div>
+
+            <!-- Editable Fields -->
+            <div class="preview-fields">
+                <div class="preview-field">
+                    <label>Topic Name</label>
+                    <input type="text" id="previewTopicName" placeholder="Name des Topics">
+                </div>
+
+                <div class="preview-field-row">
+                    <div class="preview-field">
+                        <label>Sprache</label>
+                        <input type="text" id="previewLanguage" placeholder="z.B. Deutsch">
+                    </div>
+                    <div class="preview-field">
+                        <label>Timeline</label>
+                        <input type="text" id="previewTimeline" placeholder="z.B. 30 Tage, Ongoing">
+                    </div>
+                </div>
+
+                <div class="preview-field-row">
+                    <div class="preview-field">
+                        <label>Life Architecture Domäne</label>
+                        <select id="categorySelect">
+                            <option value="Schaffen">Schaffen</option>
+                            <option value="Geist">Geist</option>
+                            <option value="Körper">Körper</option>
+                            <option value="Mensch">Mensch</option>
+                        </select>
+                    </div>
+                    <div class="preview-field" id="authorFieldContainer" style="display: none;">
+                        <label>Author</label>
+                        <input type="text" id="previewAuthor" placeholder="Autor des Buches">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Section with Toggle -->
+            <div class="task-section">
+                <div class="task-header">
+                    <label>Task Prompt</label>
+                    <div class="task-toggle">
+                        <button id="viewRenderedBtn" class="active">Rendered</button>
+                        <button id="viewEditBtn">Edit</button>
+                    </div>
+                </div>
+
+                <div class="task-rendered" id="taskRendered">
+                    <!-- Markdown rendered content goes here -->
+                </div>
+
+                <div class="task-edit" id="taskEdit">
+                    <textarea id="taskEditTextarea" placeholder="Task Prompt..."></textarea>
+                </div>
+            </div>
+
+            <!-- PDF Upload for book topics -->
+            <div class="pdf-upload-section" id="pdfUploadSection" style="display: none;">
+                <h4>PDF Upload</h4>
+                <input type="file" id="pdfFile" accept=".pdf">
+                <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
+                    Optional: Upload das PDF dieses Buches
+                </small>
+            </div>
+
+            <!-- Actions -->
+            <div class="preview-actions-bar">
+                <button id="saveButton" class="btn-primary">Topic speichern</button>
+                <button id="editButton" class="btn-secondary">Weiter im Chat</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chatHistory = [];
+let createdTopic = null;
+let selectedTopicType = null;
+let isEditMode = false;
+
+// DOM Elements
+const typeSelection = document.getElementById('typeSelection');
+const selectGeneralBtn = document.getElementById('selectGeneral');
+const selectBookBtn = document.getElementById('selectBook');
+const chatMessages = document.getElementById('chatMessages');
+const userInput = document.getElementById('userInput');
+const sendButton = document.getElementById('sendButton');
+const chatInputContainer = document.getElementById('chatInputContainer');
+const topicPreview = document.getElementById('topicPreview');
+const saveButton = document.getElementById('saveButton');
+const editButton = document.getElementById('editButton');
+
+// Preview Elements
+const previewTopicName = document.getElementById('previewTopicName');
+const previewLanguage = document.getElementById('previewLanguage');
+const previewTimeline = document.getElementById('previewTimeline');
+const previewAuthor = document.getElementById('previewAuthor');
+const authorFieldContainer = document.getElementById('authorFieldContainer');
+const taskRendered = document.getElementById('taskRendered');
+const taskEdit = document.getElementById('taskEdit');
+const taskEditTextarea = document.getElementById('taskEditTextarea');
+const viewRenderedBtn = document.getElementById('viewRenderedBtn');
+const viewEditBtn = document.getElementById('viewEditBtn');
+
+// Configure marked.js
+marked.setOptions({
+    breaks: true,
+    gfm: true
+});
+
+// Handle type selection
+function selectType(type) {
+    selectedTopicType = type;
+    typeSelection.style.display = 'none';
+    chatMessages.style.display = 'block';
+    chatInputContainer.style.display = 'flex';
+
+    const greeting = type === 'book'
+        ? "Perfekt! Welches Buch möchtest du lernen? Wer ist der Autor?"
+        : "Perfekt! Welches Thema möchtest du lernen?";
+
+    addMessage('assistant', greeting);
+    userInput.focus();
+}
+
+// Send message
+async function sendMessage() {
+    const message = userInput.value.trim();
+    if (!message) return;
+
+    addMessage('user', message);
+    userInput.value = '';
+    sendButton.disabled = true;
+    sendButton.textContent = 'Thinking...';
+
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: message,
+                history: chatHistory,
+                topic_type: selectedTopicType
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'model', content: data.response });
+
+        if (data.is_json && data.topic_data) {
+            createdTopic = data.topic_data;
+            showTopicPreview(createdTopic);
+        } else {
+            addMessage('assistant', data.response);
+        }
+
+    } catch (error) {
+        alert('Error: ' + error);
+    } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = 'Send';
+    }
+}
+
+// Add message to chat
+function addMessage(role, content) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    // Use marked for assistant messages, simple formatting for user
+    if (role === 'assistant') {
+        contentDiv.innerHTML = marked.parse(content);
+    } else {
+        const formatted = content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+        contentDiv.innerHTML = '<p>' + formatted + '</p>';
+    }
+
+    messageDiv.appendChild(contentDiv);
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Show topic preview with editable fields
+function showTopicPreview(topic) {
+    // Populate editable fields
+    previewTopicName.value = topic.topic_name || '';
+    previewLanguage.value = topic.language || 'Deutsch';
+    previewTimeline.value = topic.timeline || '';
+
+    // Handle book-specific fields
+    if (topic.type === 'book') {
+        authorFieldContainer.style.display = 'block';
+        previewAuthor.value = topic.author || '';
+        document.getElementById('pdfUploadSection').style.display = 'block';
+    } else {
+        authorFieldContainer.style.display = 'none';
+        document.getElementById('pdfUploadSection').style.display = 'none';
+    }
+
+    // Render task with markdown
+    const taskContent = topic.task || '';
+    taskEditTextarea.value = taskContent;
+    renderTask(taskContent);
+
+    // Auto-suggest category based on task content
+    suggestCategory(taskContent);
+
+    // Show preview, hide chat input
+    topicPreview.style.display = 'block';
+    chatInputContainer.style.display = 'none';
+
+    // Reset to rendered view
+    setTaskView('rendered');
+}
+
+// Render task as markdown
+function renderTask(content) {
+    if (!content) {
+        taskRendered.innerHTML = '<p style="color: #666;">Kein Task Prompt vorhanden</p>';
+        return;
+    }
+    taskRendered.innerHTML = marked.parse(content);
+}
+
+// Toggle between rendered and edit view
+function setTaskView(mode) {
+    isEditMode = mode === 'edit';
+
+    if (isEditMode) {
+        taskRendered.style.display = 'none';
+        taskEdit.style.display = 'block';
+        viewRenderedBtn.classList.remove('active');
+        viewEditBtn.classList.add('active');
+        taskEditTextarea.focus();
+    } else {
+        // Update rendered view from textarea
+        renderTask(taskEditTextarea.value);
+        taskRendered.style.display = 'block';
+        taskEdit.style.display = 'none';
+        viewRenderedBtn.classList.add('active');
+        viewEditBtn.classList.remove('active');
+    }
+}
+
+// Auto-suggest category based on content
+function suggestCategory(content) {
+    const lower = content.toLowerCase();
+    const categorySelect = document.getElementById('categorySelect');
+
+    if (lower.includes('meditation') || lower.includes('bewusstsein') ||
+        lower.includes('reflektion') || lower.includes('consciousness') ||
+        lower.includes('geist')) {
+        categorySelect.value = 'Geist';
+    } else if (lower.includes('körper') || lower.includes('bewegung') ||
+               lower.includes('ernährung') || lower.includes('schlaf') ||
+               lower.includes('fitness') || lower.includes('body')) {
+        categorySelect.value = 'Körper';
+    } else if (lower.includes('beziehung') || lower.includes('liebe') ||
+               lower.includes('freund') || lower.includes('mensch') ||
+               lower.includes('relationship')) {
+        categorySelect.value = 'Mensch';
+    } else {
+        // Default to Schaffen for intellectual topics
+        categorySelect.value = 'Schaffen';
+    }
+}
+
+// Save topic with edited values
+async function saveTopic() {
+    if (!createdTopic) return;
+
+    // Update topic from editable fields
+    createdTopic.topic_name = previewTopicName.value.trim();
+    createdTopic.language = previewLanguage.value.trim();
+    createdTopic.timeline = previewTimeline.value.trim();
+    createdTopic.task = taskEditTextarea.value;
+    createdTopic.category = document.getElementById('categorySelect').value;
+    createdTopic.is_foundation = true;
+
+    if (createdTopic.type === 'book') {
+        createdTopic.author = previewAuthor.value.trim();
+    }
+
+    // Validate required fields
+    if (!createdTopic.topic_name) {
+        alert('Bitte gib einen Topic Namen ein');
+        previewTopicName.focus();
+        return;
+    }
+    if (!createdTopic.task) {
+        alert('Der Task Prompt darf nicht leer sein');
+        setTaskView('edit');
+        return;
+    }
+
+    saveButton.disabled = true;
+    saveButton.textContent = 'Speichere...';
+
+    try {
+        // Handle PDF upload for book topics
+        if (createdTopic.type === 'book') {
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            if (pdfFile) {
+                saveButton.textContent = 'Upload wird vorbereitet...';
+
+                const urlResponse = await fetch('/api/get-upload-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        topic_id: createdTopic.topic_id,
+                        filename: pdfFile.name
+                    })
+                });
+
+                const urlData = await urlResponse.json();
+
+                if (urlData.error) {
+                    alert('Fehler beim Upload: ' + urlData.error);
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Topic speichern';
+                    return;
+                }
+
+                if (urlData.use_direct_upload) {
+                    saveButton.textContent = 'PDF wird hochgeladen...';
+
+                    try {
+                        const uploadResponse = await fetch(urlData.upload_url, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/pdf',
+                                'x-goog-content-length-range': '0,104857600'
+                            },
+                            body: pdfFile
+                        });
+
+                        if (!uploadResponse.ok) {
+                            throw new Error('Upload failed: ' + uploadResponse.statusText);
+                        }
+
+                        createdTopic.pdf_path = urlData.pdf_path;
+                    } catch (uploadError) {
+                        console.error('Direct upload failed:', uploadError);
+                        // Try fallback
+                        saveButton.textContent = 'Fallback Upload...';
+
+                        const formData = new FormData();
+                        formData.append('pdf', pdfFile);
+                        formData.append('topic_id', createdTopic.topic_id);
+
+                        const legacyResponse = await fetch('/api/upload-pdf', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const legacyData = await legacyResponse.json();
+                        if (legacyData.success) {
+                            createdTopic.pdf_path = legacyData.pdf_path;
+                        }
+                    }
+                } else {
+                    // Legacy upload
+                    saveButton.textContent = 'PDF wird hochgeladen...';
+
+                    const formData = new FormData();
+                    formData.append('pdf', pdfFile);
+                    formData.append('topic_id', createdTopic.topic_id);
+
+                    const uploadResponse = await fetch('/api/upload-pdf', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const uploadData = await uploadResponse.json();
+                    if (uploadData.success) {
+                        createdTopic.pdf_path = uploadData.pdf_path;
+                    }
+                }
+            }
+        }
+
+        // Save the topic
+        saveButton.textContent = 'Topic wird gespeichert...';
+
+        const response = await fetch(`/topics/${createdTopic.topic_id}/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(createdTopic)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = '/topics';
+        } else {
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            saveButton.disabled = false;
+            saveButton.textContent = 'Topic speichern';
+        }
+    } catch (error) {
+        alert('Fehler: ' + error);
+        saveButton.disabled = false;
+        saveButton.textContent = 'Topic speichern';
+    }
+}
+
+// Continue editing in chat
+function continueEditing() {
+    // Save any edits back to createdTopic before returning to chat
+    if (createdTopic) {
+        createdTopic.topic_name = previewTopicName.value.trim();
+        createdTopic.language = previewLanguage.value.trim();
+        createdTopic.timeline = previewTimeline.value.trim();
+        createdTopic.task = taskEditTextarea.value;
+        if (createdTopic.type === 'book') {
+            createdTopic.author = previewAuthor.value.trim();
+        }
+    }
+
+    topicPreview.style.display = 'none';
+    chatInputContainer.style.display = 'flex';
+    addMessage('assistant', 'Was möchtest du anpassen?');
+    userInput.focus();
+}
+
+// Event listeners
+selectGeneralBtn.addEventListener('click', () => selectType('general'));
+selectBookBtn.addEventListener('click', () => selectType('book'));
+sendButton.addEventListener('click', sendMessage);
+userInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+saveButton.addEventListener('click', saveTopic);
+editButton.addEventListener('click', continueEditing);
+
+// Task view toggle
+viewRenderedBtn.addEventListener('click', () => setTaskView('rendered'));
+viewEditBtn.addEventListener('click', () => setTaskView('edit'));
+
+// Update preview when textarea changes
+taskEditTextarea.addEventListener('input', () => {
+    // Live update could be added here if desired
+});
+</script>
+{% endblock %}

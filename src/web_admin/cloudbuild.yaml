@@ -1,0 +1,13 @@
+steps:
+  # Build the Docker image from repo root with web_admin Dockerfile
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/explanius/explanius-web-admin:latest'
+      - '-f'
+      - 'src/web_admin/Dockerfile'
+      - '.'
+
+images:
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/explanius/explanius-web-admin:latest'

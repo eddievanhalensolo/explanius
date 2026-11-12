@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Topics - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="topics-page">
+    <div class="page-header">
+        <h1>Topics</h1>
+        <div class="header-actions">
+            <button id="generateNowBtn" class="btn-success">Generate Now</button>
+            <a href="{{ url_for('topic_create') }}" class="btn-primary">+ Create New Topic</a>
+            <a href="{{ url_for('archive_list') }}" class="btn-secondary">Archive</a>
+        </div>
+    </div>
+
+    {% if grouped_topics %}
+    {% for group_label, group_topics in grouped_topics %}
+    <div class="frequency-group">
+        <h2 class="frequency-header">{{ group_label }}</h2>
+        <div class="topics-list">
+            {% for topic in group_topics %}
+            <div class="topic-card {% if not topic.active %}inactive{% endif %}">
+                <div class="topic-header">
+                    <div>
+                        <h3>{{ topic.topic_name }}</h3>
+                        <span class="topic-type">{{ topic.type }}</span>
+                        {% if topic.use_cheap_model %}
+                        <span class="topic-tier cheap">cheap</span>
+                        {% endif %}
+                        {% if topic.type == 'book' and topic.author %}
+                        <span class="topic-author">by {{ topic.author }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="topic-actions">
+                        <button class="btn-run btn-success"
+                                data-topic-id="{{ topic.topic_id }}"
+                                data-topic-name="{{ topic.topic_name }}">
+                            ▶ Run
+                        </button>
+                        <button class="btn-toggle"
+                                data-topic-id="{{ topic.topic_id }}"
+                                data-active="{{ 'true' if topic.active else 'false' }}">
+                            {{ 'Active' if topic.active else 'Inactive' }}
+                        </button>
+                        <a href="{{ url_for('topic_monitor', topic_id=topic.topic_id) }}" class="btn-monitor">📊 Monitor</a>
+                        <a href="{{ url_for('topic_edit', topic_id=topic.topic_id) }}" class="btn-edit">Edit</a>
+                        <button class="btn-archive" data-topic-id="{{ topic.topic_id }}" data-topic-name="{{ topic.topic_name }}">Archive</button>
+                    </div>
+                </div>
+                <div class="topic-body">
+                    {% if topic.scope %}
+                    <p><strong>Scope:</strong> {{ topic.scope }}</p>
+                    {% endif %}
+                    {% if topic.goal %}
+                    <p><strong>Goal:</strong> {{ topic.goal }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <p>No topics yet. Create your first one!</p>
+        <a href="{{ url_for('topic_create') }}" class="btn-primary">+ Create Topic</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.topic-tier {
+    font-size: 0.7em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.topic-tier.cheap {
+    background: linear-gradient(135deg, #10a37f, #059669);
+    color: white;
+}
+</style>
+<script>
+// Handle Generate Now button
+document.getElementById('generateNowBtn')?.addEventListener('click', async function() {
+    const btn = this;
+    const originalText = btn.textContent;
+
+    if (!confirm('Generate and send emails for all active topics now?')) {
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.textContent = '⏳ Generating...';
+
+        // Call the local proxy endpoint (avoids CORS issues)
+        const response = await fetch('/api/trigger-generation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            btn.textContent = '✓ Success!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
+        } else {
+            alert('Generation failed: ' + (data.error || 'Unknown error'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    } catch (error) {
+        alert('Error triggering generation: ' + error);
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+
+// Handle toggle buttons
+document.querySelectorAll('.btn-toggle').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const topicId = this.dataset.topicId;
+        const currentActive = this.dataset.active === 'true';
+
+        try {
+            const response = await fetch(`/topics/${topicId}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Update UI
+                this.dataset.active = data.active ? 'true' : 'false';
+                this.textContent = data.active ? 'Active' : 'Inactive';
+                this.closest('.topic-card').classList.toggle('inactive', !data.active);
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            alert('Error toggling topic: ' + error);
+        }
+    });
+});
+
+// Handle Run buttons (single topic generation)
+document.querySelectorAll('.btn-run').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const topicId = this.dataset.topicId;
+        const topicName = this.dataset.topicName;
+        const originalText = this.textContent;
+
+        if (!confirm(`Generate and send email for "${topicName}" now?`)) {
+            return;
+        }
+
+        try {
+            this.disabled = true;
+            this.textContent = '⏳ Running...';
+
+            const response = await fetch(`/api/trigger-generation/${topicId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                this.textContent = '✓ Sent!';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                    this.disabled = false;
+                }, 3000);
+            } else {
+                alert('Generation failed: ' + (data.message || 'Unknown error'));
+                this.textContent = originalText;
+                this.disabled = false;
+            }
+        } catch (error) {
+            alert('Error: ' + error);
+            this.textContent = originalText;
+            this.disabled = false;
+        }
+    });
+});
+
+// Handle archive buttons
+document.querySelectorAll('.btn-archive').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const topicId = this.dataset.topicId;
+        const topicName = this.dataset.topicName;
+
+        if (!confirm(`Archive "${topicName}"? You can restore it later from the Archive.`)) {
+            return;
+        }
+
+        try {
+            this.disabled = true;
+            this.textContent = 'Archiving...';
+
+            const response = await fetch(`/topics/${topicId}/archive`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Remove card from UI
+                this.closest('.topic-card').remove();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                this.textContent = 'Archive';
+                this.disabled = false;
+            }
+        } catch (error) {
+            alert('Error archiving topic: ' + error);
+            this.textContent = 'Archive';
+            this.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block title %}Monitor: {{ topic.topic_name }} - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="monitor-page">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('topics_list') }}" class="back-link">← Back to Topics</a>
+            <h1>📊 Monitor: {{ topic.topic_name }}</h1>
+            <span class="topic-type-badge">{{ topic.type }}</span>
+            <span class="status-badge {% if topic.active %}active{% else %}inactive{% endif %}">
+                {{ 'Active' if topic.active else 'Inactive' }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="history">Chat History</button>
+        <button class="tab-btn" data-tab="challenges">Challenges</button>
+        <button class="tab-btn" data-tab="kg">Knowledge Graph</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Overview Tab -->
+        <div id="overview-tab" class="tab-pane active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Snippets</h3>
+                    <div class="stat-value" id="stat-snippets">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Challenges</h3>
+                    <div class="stat-value" id="stat-challenges">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Run Every</h3>
+                    <div class="stat-value" id="stat-frequency">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Run Counter</h3>
+                    <div class="stat-value" id="stat-counter">-</div>
+                </div>
+            </div>
+
+            <!-- Strategic Brief Section -->
+            <div class="internal-note-section">
+                <h2>🎯 Latest Strategic Brief</h2>
+                <div id="strategic-brief-container" class="internal-note-container">
+                    <div class="loading">Loading strategic brief...</div>
+                </div>
+            </div>
+
+            <div class="topic-details">
+                <h2>Topic Details</h2>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>Topic ID:</strong>
+                        <span>{{ topic.topic_id }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Type:</strong>
+                        <span>{{ topic.type }}</span>
+                    </div>
+                    {% if topic.type == 'book' %}
+                    <div class="detail-item">
+                        <strong>Author:</strong>
+                        <span>{{ topic.author or 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>PDF Path:</strong>
+                        <span>{{ topic.pdf_path or 'N/A' }}</span>
+                    </div>
+                    {% endif %}
+                    {% if topic.scope %}
+                    <div class="detail-item full-width">
+                        <strong>Scope:</strong>
+                        <span>{{ topic.scope }}</span>
+                    </div>
+                    {% endif %}
+                    {% if topic.goal %}
+                    <div class="detail-item full-width">
+                        <strong>Goal:</strong>
+                        <span>{{ topic.goal }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history-tab" class="tab-pane">
+            <div class="history-controls">
+                <h2>Chat History</h2>
+                <button id="refreshHistory" class="btn-secondary">🔄 Refresh</button>
+            </div>
+            <div id="history-container" class="history-container">
+                <div class="loading">Loading history...</div>
+            </div>
+        </div>
+
+        <!-- Challenges Tab -->
+        <div id="challenges-tab" class="tab-pane">
+            <h2>Challenge History</h2>
+            <div id="challenges-container" class="challenges-container">
+                <div class="loading">Loading challenges...</div>
+            </div>
+        </div>
+
+        <!-- Knowledge Graph Tab -->
+        <div id="kg-tab" class="tab-pane">
+            <h2>Knowledge Graph Concepts</h2>
+            <div id="kg-container" class="kg-container">
+                <div class="loading">Loading concepts...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const topicId = "{{ topic.topic_id }}";
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabName = this.dataset.tab;
+
+        // Update buttons
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        // Update panes
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.getElementById(`${tabName}-tab`).classList.add('active');
+
+        // Load data for tab
+        loadTabData(tabName);
+    });
+});
+
+// Load data for specific tab
+async function loadTabData(tabName) {
+    switch(tabName) {
+        case 'overview':
+            await loadStats();
+            break;
+        case 'history':
+            await loadHistory();
+            break;
+        case 'challenges':
+            await loadChallenges();
+            break;
+        case 'kg':
+            await loadKG();
+            break;
+    }
+}
+
+// Load statistics
+async function loadStats() {
+    try {
+        const response = await fetch(`/api/topics/${topicId}/stats`);
+        const data = await response.json();
+
+        document.getElementById('stat-snippets').textContent = data.total_snippets || 0;
+        document.getElementById('stat-challenges').textContent = data.total_challenges || 0;
+        document.getElementById('stat-frequency').textContent = `${data.run_every || 1} day(s)`;
+        document.getElementById('stat-counter').textContent = data.run_counter || 0;
+
+        // Load strategic brief
+        await loadStrategicBrief();
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+// Load the latest strategic brief (stored as user message before model response)
+async function loadStrategicBrief() {
+    const container = document.getElementById('strategic-brief-container');
+
+    try {
+        const response = await fetch(`/api/topics/${topicId}/history`);
+        const data = await response.json();
+
+        if (!data.entries || data.entries.length === 0) {
+            container.innerHTML = '<div class="empty-state">No chat history yet</div>';
+            return;
+        }
+
+        // Find the last user message that looks like a strategic brief
+        // A brief typically starts with "SESSION" and has sections like ZIEL, FORMAT
+        let strategicBrief = null;
+        let briefIndex = -1;
+
+        for (let i = data.entries.length - 1; i >= 0; i--) {
+            const entry = data.entries[i];
+            if (entry.role === 'user' && isStrategicBrief(entry.content)) {
+                strategicBrief = entry.content;
+                briefIndex = i;
+                break;
+            }
+        }
+
+        if (!strategicBrief) {
+            container.innerHTML = '<div class="empty-state">No strategic brief found yet (new system)</div>';
+            return;
+        }
+
+        // Display the strategic brief
+        container.innerHTML = formatStrategicBrief(strategicBrief);
+
+    } catch (error) {
+        console.error('Error loading strategic brief:', error);
+        container.innerHTML = '<div class="error">Error loading strategic brief: ' + error.message + '</div>';
+    }
+}
+
+// Check if a user message is a strategic brief.
+// A brief is any user message that isn't a learner reply and isn't a stray
+// writer JSON. Works for both legacy briefs (with SESSION/STRATEGISCH markers)
+// and new free-prose briefs.
+function isStrategicBrief(content) {
+    if (!content || typeof content !== 'string') return false;
+    const s = content.trim();
+    if (s.length < 20) return false;
+    if (s.startsWith('**ANTWORT VOM NUTZER:**')) return false;
+    if (s.startsWith('{') && s.endsWith('}') && s.includes('"html_content"')) return false;
+    return true;
+}
+
+// Format strategic brief for display.
+// Briefs are free prose: render paragraphs, bullets, and ALL-CAPS section
+// headers (still useful for legacy briefs). No assumed slot structure.
+function formatStrategicBrief(briefText) {
+    if (!briefText) return '<div class="empty-state">Empty strategic brief</div>';
+
+    const lines = briefText.split('\n');
+    let html = '<div class="internal-note-content">';
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // ALL-CAPS line (likely a section header in legacy or new briefs)
+        if (/^[A-ZÄÖÜ\-\s]{3,}$/.test(trimmed) && !trimmed.startsWith('•')) {
+            html += `<h4 class="note-section" style="color: #2196f3; margin-top: 12px;">${escapeHtml(trimmed)}</h4>`;
+        }
+        // Bullet points
+        else if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+            const content = trimmed.substring(1).trim();
+            html += `<div class="note-item" style="margin-left: 15px;">• ${escapeHtml(content)}</div>`;
+        }
+        // Regular text
+        else {
+            html += `<div class="note-text">${escapeHtml(trimmed)}</div>`;
+        }
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// Load chat history
+async function loadHistory() {
+    const container = document.getElementById('history-container');
+    container.innerHTML = '<div class="loading">Loading history...</div>';
+
+    try {
+        const response = await fetch(`/api/topics/${topicId}/history`);
+        const data = await response.json();
+
+        if (!data.entries || data.entries.length === 0) {
+            container.innerHTML = '<div class="empty-state">No history yet</div>';
+            return;
+        }
+
+        let html = '<div class="history-entries">';
+
+        for (const entry of data.entries) {
+            if (entry.is_challenge) {
+                html += `<div class="history-entry challenge-marker">
+                    <div class="entry-role">Challenge Triggered</div>
+                </div>`;
+            } else {
+                // Check if this is user feedback (marked with ANTWORT VOM NUTZER)
+                const isUserFeedback = entry.role === 'user' && entry.content.includes('ANTWORT VOM NUTZER');
+                const roleClass = entry.role === 'user' ? 'user-entry' : 'model-entry';
+                const feedbackClass = isUserFeedback ? ' user-feedback' : '';
+                const roleLabel = isUserFeedback ? '💬 ANTWORT VOM NUTZER' : (entry.role === 'user' ? '📋 Strategic Brief' : '🤖 Model');
+
+                html += `<div class="history-entry ${roleClass}${feedbackClass}">
+                    <div class="entry-header">
+                        <span class="entry-role">${roleLabel}</span>
+                        <span class="entry-index">#${entry.index}</span>
+                    </div>
+                    <div class="entry-content">${escapeHtml(entry.content).substring(0, 500)}${entry.content.length > 500 ? '...' : ''}</div>
+                </div>`;
+            }
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading history:', error);
+        container.innerHTML = '<div class="error">Error loading history</div>';
+    }
+}
+
+// Load challenges (extracted from history)
+async function loadChallenges() {
+    const container = document.getElementById('challenges-container');
+    container.innerHTML = '<div class="loading">Loading challenges...</div>';
+
+    try {
+        const response = await fetch(`/api/topics/${topicId}/history`);
+        const data = await response.json();
+
+        if (!data.entries || data.entries.length === 0) {
+            container.innerHTML = '<div class="empty-state">No challenges yet</div>';
+            return;
+        }
+
+        // Extract challenges
+        const challenges = [];
+        for (let i = 0; i < data.entries.length; i++) {
+            if (data.entries[i].is_challenge && i + 1 < data.entries.length) {
+                const challengeContent = data.entries[i + 1];
+                challenges.push({
+                    index: i,
+                    content: challengeContent.content
+                });
+            }
+        }
+
+        if (challenges.length === 0) {
+            container.innerHTML = '<div class="empty-state">No challenges yet</div>';
+            return;
+        }
+
+        let html = '<div class="challenges-list">';
+        challenges.forEach((challenge, idx) => {
+            // Try to extract title
+            const titleMatch = challenge.content.match(/"title":\s*"([^"]+)"/);
+            const title = titleMatch ? titleMatch[1] : `Challenge #${idx + 1}`;
+
+            html += `<div class="challenge-card">
+                <h3>${escapeHtml(title)}</h3>
+                <div class="challenge-preview">${escapeHtml(challenge.content).substring(0, 200)}...</div>
+                <div class="challenge-meta">Position: #${challenge.index}</div>
+            </div>`;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading challenges:', error);
+        container.innerHTML = '<div class="error">Error loading challenges</div>';
+    }
+}
+
+// Load KG concepts
+async function loadKG() {
+    const container = document.getElementById('kg-container');
+    container.innerHTML = '<div class="loading">Loading concepts...</div>';
+
+    try {
+        const response = await fetch(`/api/topics/${topicId}/kg-concepts`);
+        const data = await response.json();
+
+        if (!data.concepts || Object.keys(data.concepts).length === 0) {
+            container.innerHTML = '<div class="empty-state">No concepts in knowledge graph yet</div>';
+            return;
+        }
+
+        let html = '<div class="kg-info"><em>' + (data.note || '') + '</em></div>';
+        html += '<div class="kg-categories">';
+
+        for (const [category, concepts] of Object.entries(data.concepts)) {
+            html += `<div class="kg-category">
+                <h3>${escapeHtml(category)} (${Object.keys(concepts).length})</h3>
+                <div class="kg-concepts">`;
+
+            for (const [name, conceptData] of Object.entries(concepts)) {
+                html += `<div class="kg-concept">
+                    <strong>${escapeHtml(name)}</strong>
+                    <p>${escapeHtml(conceptData.definition || 'No definition')}</p>
+                    <small>Updated: ${conceptData.last_updated || 'Unknown'}</small>
+                </div>`;
+            }
+
+            html += '</div></div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading KG:', error);
+        container.innerHTML = '<div class="error">Error loading knowledge graph</div>';
+    }
+}
+
+// Refresh history button
+document.getElementById('refreshHistory')?.addEventListener('click', loadHistory);
+
+// Utility function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Load initial data
+loadStats();
+</script>
+{% endblock %}

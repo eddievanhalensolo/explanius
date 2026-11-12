@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Archive - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="topics-page">
+    <div class="page-header">
+        <h1>Archive</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('topics_list') }}" class="btn-secondary">Back to Topics</a>
+        </div>
+    </div>
+
+    {% if topics %}
+    <div class="topics-list">
+        {% for topic in topics %}
+        <div class="topic-card inactive">
+            <div class="topic-header">
+                <div>
+                    <h3>{{ topic.topic_name }}</h3>
+                    <span class="topic-type">{{ topic.type }}</span>
+                    {% if topic.type == 'book' and topic.author %}
+                    <span class="topic-author">by {{ topic.author }}</span>
+                    {% endif %}
+                </div>
+                <div class="topic-actions">
+                    <button class="btn-restore btn-success"
+                            data-topic-id="{{ topic.topic_id }}"
+                            data-topic-name="{{ topic.topic_name }}">
+                        Restore
+                    </button>
+                </div>
+            </div>
+            <div class="topic-body">
+                {% if topic.scope %}
+                <p><strong>Scope:</strong> {{ topic.scope }}</p>
+                {% endif %}
+                {% if topic.goal %}
+                <p><strong>Goal:</strong> {{ topic.goal }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No archived topics.</p>
+        <a href="{{ url_for('topics_list') }}" class="btn-secondary">Back to Topics</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Handle restore buttons
+document.querySelectorAll('.btn-restore').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const topicId = this.dataset.topicId;
+        const topicName = this.dataset.topicName;
+
+        if (!confirm(`Restore "${topicName}" from archive?`)) {
+            return;
+        }
+
+        try {
+            this.disabled = true;
+            this.textContent = 'Restoring...';
+
+            const response = await fetch(`/archive/${topicId}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Remove card from UI
+                this.closest('.topic-card').remove();
+
+                // Check if list is now empty
+                if (document.querySelectorAll('.topic-card').length === 0) {
+                    location.reload();
+                }
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                this.textContent = 'Restore';
+                this.disabled = false;
+            }
+        } catch (error) {
+            alert('Error restoring topic: ' + error);
+            this.textContent = 'Restore';
+            this.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

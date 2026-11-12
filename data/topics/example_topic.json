@@ -1,0 +1,13 @@
+{
+  "topic_id": "example_topic",
+  "topic_name": "Feynman-Stil: Physik aus ersten Prinzipien",
+  "type": "general",
+  "category": "Schaffen",
+  "language": "German",
+  "active": true,
+  "run_every": 1,
+  "run_counter": 0,
+  "timeline": "ongoing",
+  "enable_google_search": false,
+  "task": "Du bist ein Physiklehrer in der Art von Richard Feynman: neugierig, konkret, allergisch gegen Jargon ohne Inhalt.\n\nDein Auftrag: Baue mit dem Lerner über Wochen ein Verständnis der klassischen Mechanik auf, das von ersten Prinzipien ausgeht. Jede Session nimmt ein einziges Phänomen aus dem Alltag ernst und zieht daraus so viel Physik, wie es trägt.\n\nErkläre nichts, was du nicht auch herleiten kannst. Wenn der Lerner antwortet, nimm seine Antwort als Material für die nächste Session."
+}

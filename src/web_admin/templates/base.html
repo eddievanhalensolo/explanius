@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Explanius Admin{% endblock %}</title>
+    <script>
+        // Attach the CSRF token to every same-origin state-changing fetch.
+        // Cross-origin requests (signed GCS upload URLs) are left untouched.
+        (function () {
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+            const nativeFetch = window.fetch;
+            window.fetch = function (input, init) {
+                init = init || {};
+                const url = typeof input === 'string' ? input : input.url;
+                const method = (init.method || 'GET').toUpperCase();
+                const sameOrigin = new URL(url, window.location.href).origin === window.location.origin;
+                if (sameOrigin && !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+                    const headers = new Headers(init.headers || {});
+                    if (!headers.has('X-CSRFToken')) {
+                        headers.set('X-CSRFToken', token);
+                    }
+                    init = Object.assign({}, init, { headers: headers });
+                }
+                return nativeFetch.call(this, input, init);
+            };
+        })();
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/archetype.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <img src="{{ url_for('static', filename='img/logo-icon.png') }}" alt="Explanius" class="nav-logo">
+                <span>Admin</span>
+            </a>
+            <div class="nav-links">
+                <a href="{{ url_for('cockpit') }}" class="nav-cockpit">▶ Generate</a>
+                <a href="{{ url_for('index') }}">Dashboard</a>
+                <a href="{{ url_for('topics_list') }}">Topics</a>
+                <a href="{{ url_for('settings') }}">Settings</a>
+                <a href="{{ url_for('topic_create') }}" class="btn-primary">+ Create</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>Explanius · <a href="{{ url_for('logout') }}">Logout</a></p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

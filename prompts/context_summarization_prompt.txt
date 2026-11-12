@@ -1,0 +1,95 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTEXT SUMMARIZATION
+═══════════════════════════════════════════════════════════════════════════════
+Du fasst einen Gesprächsverlauf für eine laufende Lernbeziehung zusammen.
+Diese Zusammenfassung ERSETZT die Originalnachrichten permanent.
+
+Das ist eine technische Aufgabe: Du extrahierst und verdichtest Information
+für dein zukünftiges Selbst, das diese Lernbeziehung weiterführen wird.
+
+═══════════════════════════════════════════════════════════════════════════════
+TOPIC MISSION
+═══════════════════════════════════════════════════════════════════════════════
+Dies ist der Task-Prompt, der alle zu summarisierenden Sessions geleitet hat.
+Verstehe, was das Gespräch erreichen sollte.
+
+{{TASK_PROMPT}}
+
+═══════════════════════════════════════════════════════════════════════════════
+FULL CONVERSATION HISTORY (for hindsight)
+═══════════════════════════════════════════════════════════════════════════════
+Nutze dies, um den gesamten Bogen zu verstehen und was sich als wichtig
+erwiesen hat. Diese Hindsight-Perspektive hilft dir zu erkennen, welche
+frühen Inhalte später relevant wurden.
+
+{{FULL_HISTORY}}
+
+═══════════════════════════════════════════════════════════════════════════════
+MESSAGES TO SUMMARIZE
+═══════════════════════════════════════════════════════════════════════════════
+Diese spezifischen Nachrichten werden durch deine Zusammenfassung ersetzt.
+Erfasse alles Wesentliche.
+
+{{MESSAGES_TO_SUMMARIZE}}
+
+═══════════════════════════════════════════════════════════════════════════════
+DEINE AUFGABE
+═══════════════════════════════════════════════════════════════════════════════
+Erstelle eine Zusammenfassung, die bewahrt:
+
+1. LEARNING ARC
+   - Welche Konzepte wurden eingeführt?
+   - Was war die Lehr-Trajektorie?
+   - Gab es Durchbrüche oder Aha-Momente?
+   - Was wurde tatsächlich gelernt (nicht nur präsentiert)?
+
+2. KEY INTERNAL NOTES
+   - Was hat der Lehrer intern getrackt?
+   - Pläne für zukünftige Sessions?
+   - Beobachtungen über den Fortschritt des Schülers?
+   - Anpassungen der Strategie?
+
+3. ACTIVE THREADS
+   - Fragen, die bewusst offen gelassen wurden
+   - Versprechen für zukünftige Sessions
+   - Hooks und Callbacks, die gesetzt wurden
+   - Seeds, die für später gepflanzt wurden
+   - Dinge die "irgendwann" behandelt werden sollen
+
+4. NOTABLE MOMENTS
+   - User-Feedback, das den Ansatz beeinflusst hat
+   - Signifikante Pivots oder Anpassungen
+   - Besonders effektive oder ineffektive Elemente
+   - Emotionale Resonanz (was hat funktioniert/nicht funktioniert)
+
+═══════════════════════════════════════════════════════════════════════════════
+KRITISCHE ANFORDERUNGEN
+═══════════════════════════════════════════════════════════════════════════════
+- Diese Zusammenfassung ERSETZT die Originale PERMANENT
+- Include ALLES Wesentliche - nichts Wichtiges darf verloren gehen
+- Schreibe für dein zukünftiges Selbst, das dieses Thema weiter unterrichten wird
+- Sei dicht aber scanbar - die Summary dient Kontinuität, nicht Lesevergnügen
+- Wenn etwas geöffnet und später geschlossen wurde, notiere die Auflösung
+- Wenn etwas versprochen aber nicht geliefert wurde, flagge es klar
+- Bewahre den "Geist" des Topics - die Art wie unterrichtet wurde
+
+═══════════════════════════════════════════════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════════════════════════════════════════════
+Gib NUR die Zusammenfassung zurück, in diesem exakten Format:
+
+[CONTEXT_SUMMARY]
+Sessions: {{SESSION_RANGE}} | Summarized: {{DATETIME}}
+
+## Learning Arc
+<Inhalt - was gelehrt und gelernt wurde, Trajektorie, Durchbrüche>
+
+## Key Internal Notes
+<Inhalt - Lehrer-Tracking, Pläne, Beobachtungen, Strategieanpassungen>
+
+## Active Threads
+<Inhalt - offene Fragen, Versprechen, Hooks, Seeds für später>
+
+## Notable Moments
+<Inhalt - wichtiges Feedback, Pivots, was funktioniert hat - weglassen wenn keine>
+[/CONTEXT_SUMMARY]

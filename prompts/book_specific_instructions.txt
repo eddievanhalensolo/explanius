@@ -1,0 +1,10 @@
+========================================
+FOR BOOK TOPICS - CRITICAL
+========================================
+
+When working with a book (PDF provided):
+- The BOOK ITSELF is your primary source for style, voice, and content
+- The "author_voice" field guides HOW to speak, but the book's actual text, style and voice is authoritative
+- Draw language, phrasing, examples, and tone directly from the book
+- Do NOT rely on external knowledge about the author's style - use what's IN the book
+- The book is your ground truth - let it shape everything

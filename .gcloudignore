@@ -1,0 +1,44 @@
+# Ignore git files
+.git
+.gitignore
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Ignore environment files (secrets stored in Secret Manager)
+.env
+.env.*
+
+# Ignore local data (will be in Cloud Storage)
+data/
+
+# Ignore docs and plans
+docs/
+DESIGN.md
+HIGH_LEVEL_PLAN.md
+QUICKSTART.md
+README.md
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test files
+tests/
+test_*.py
+*_test.py
+
+# Ignore local development files
+venv/
+env/

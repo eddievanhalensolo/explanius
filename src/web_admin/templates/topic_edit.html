@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Topic - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="topic-edit-page">
+    <h1>Edit Topic: {{ topic.topic_name }}</h1>
+
+    {% if topic.task %}
+    <div class="info-banner">
+        <strong>V2 Topic</strong> - Dieses Topic nutzt das neue Format mit vollständigem Task-Prompt
+    </div>
+    {% else %}
+    <div class="info-banner warning">
+        <strong>Legacy Topic</strong> - Dieses Topic nutzt das alte Format. Empfehlung: Neu erstellen mit V2.
+    </div>
+    {% endif %}
+
+    <form id="editForm">
+        <!-- Basic Fields (always editable) -->
+        <section class="form-section">
+            <h3>Basis-Einstellungen</h3>
+
+            <div class="form-group">
+                <label>Topic ID</label>
+                <input type="text" value="{{ topic.topic_id }}" disabled>
+                <small>Cannot be changed</small>
+            </div>
+
+            <div class="form-group">
+                <label>Topic Name *</label>
+                <input type="text" id="topic_name" value="{{ topic.topic_name }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Type</label>
+                <select id="type" disabled>
+                    <option value="general" {% if topic.type == 'general' %}selected{% endif %}>General</option>
+                    <option value="book" {% if topic.type == 'book' %}selected{% endif %}>Book</option>
+                </select>
+                <small>Cannot be changed after creation</small>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="active" {% if topic.active %}checked{% endif %}>
+                    Active
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <select id="category">
+                    <option value="Schaffen" {% if topic.category == 'Schaffen' or not topic.category %}selected{% endif %}>Schaffen</option>
+                    <option value="Geist" {% if topic.category == 'Geist' %}selected{% endif %}>Geist</option>
+                    <option value="Körper" {% if topic.category == 'Körper' %}selected{% endif %}>Körper</option>
+                    <option value="Mensch" {% if topic.category == 'Mensch' %}selected{% endif %}>Mensch</option>
+                </select>
+                <small>Life Architecture Domäne</small>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="enable_google_search" {% if topic.enable_google_search %}checked{% endif %}>
+                    Enable Google Search
+                </label>
+                <small>Allow Gemini to search the web for current information</small>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label>
+                    <input type="checkbox" id="use_cheap_model" {% if topic.use_cheap_model %}checked{% endif %}>
+                    Use Cheap Model
+                </label>
+                <small>Uses the cheap model tier (configured in Settings) instead of the expensive one</small>
+            </div>
+
+            <div class="form-group">
+                <label>Run Every</label>
+                <select id="run_every">
+                    <option value="1" {% if topic.run_every == 1 or not topic.run_every %}selected{% endif %}>Every run (daily)</option>
+                    <option value="2" {% if topic.run_every == 2 %}selected{% endif %}>Every 2nd run</option>
+                    <option value="3" {% if topic.run_every == 3 %}selected{% endif %}>Every 3rd run</option>
+                    <option value="7" {% if topic.run_every == 7 %}selected{% endif %}>Every 7th run (weekly)</option>
+                </select>
+                <small>How often this topic generates content</small>
+            </div>
+
+            <div class="form-group">
+                <label>Language</label>
+                <input type="text" id="language" value="{{ topic.language or '' }}" placeholder="e.g. English, Deutsch">
+            </div>
+
+            <div class="form-group">
+                <label>Extra Recipients</label>
+                <textarea id="extra_recipient_emails" rows="4" placeholder="friend@example.com&#10;another@example.com">{{ (topic.extra_recipient_emails or []) | join('\n') }}</textarea>
+                <small>Optional. One email per line. This topic will also be sent to these addresses.</small>
+            </div>
+        </section>
+
+        <!-- V2 Format: Task Field -->
+        {% if topic.task %}
+        <section class="form-section">
+            <h3>Task Prompt (V2)</h3>
+            <p class="subtitle">Das vollständige Prompt das den Teaching-LLM steuert</p>
+
+            <div class="form-group">
+                <label>Task Prompt *</label>
+                <textarea id="task" rows="20" required style="font-family: monospace; font-size: 0.9em;">{{ topic.task }}</textarea>
+                <small>Rolle, Mission, Direktiven, Output-Format - alles in einem Prompt</small>
+            </div>
+
+            {% if topic.type == 'book' %}
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="author" value="{{ topic.author or '' }}">
+            </div>
+            {% endif %}
+
+            {% if topic.timeline %}
+            <div class="form-group">
+                <label>Timeline</label>
+                <input type="text" id="timeline" value="{{ topic.timeline }}" placeholder="z.B. 30 Tage, 3 Monate">
+            </div>
+            {% endif %}
+        </section>
+
+        <!-- Legacy Format: Individual Fields -->
+        {% else %}
+        <section class="form-section">
+            <h3>Content Fields (Legacy V1)</h3>
+
+            <div class="form-group">
+                <label>Goal *</label>
+                <textarea id="goal" rows="2" required>{{ topic.goal or '' }}</textarea>
+                <small>The core insight to gain</small>
+            </div>
+
+            <div class="form-group">
+                <label>Scope *</label>
+                <textarea id="scope" rows="3" required>{{ topic.scope or '' }}</textarea>
+                <small>The breadth - from X to Y, covering Z</small>
+            </div>
+
+            {% if topic.type == 'book' %}
+            <div class="form-group">
+                <label>Author</label>
+                <input type="text" id="author_legacy" value="{{ topic.author or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Author Voice</label>
+                <textarea id="author_voice" rows="4">{{ topic.author_voice or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Pacing</label>
+                <textarea id="pacing" rows="2">{{ topic.pacing or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>PDF Path</label>
+                <input type="text" id="pdf_path" value="{{ topic.pdf_path or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Current Page</label>
+                <input type="number" id="current_page" value="{{ topic.current_page or 1 }}">
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Changes</button>
+            <a href="{{ url_for('topics_list') }}" class="btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const form = document.getElementById('editForm');
+const topicId = '{{ topic.topic_id }}';
+const topicType = '{{ topic.type }}';
+const isV2 = {{ 'true' if topic.task else 'false' }};
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Build topic data - start with existing topic to preserve all fields
+    const topicData = {{ topic | tojson }};
+
+    // Update editable fields
+    topicData.topic_name = document.getElementById('topic_name').value;
+    topicData.active = document.getElementById('active').checked;
+    topicData.category = document.getElementById('category').value;
+    topicData.enable_google_search = document.getElementById('enable_google_search').checked;
+    topicData.use_cheap_model = document.getElementById('use_cheap_model').checked;
+    topicData.run_every = parseInt(document.getElementById('run_every').value) || 1;
+
+    const language = document.getElementById('language').value;
+    if (language) {
+        topicData.language = language;
+    } else {
+        delete topicData.language;
+    }
+
+    const extraRecipientsRaw = document.getElementById('extra_recipient_emails').value;
+    const extraRecipients = extraRecipientsRaw
+        .replace(/,/g, '\n')
+        .split('\n')
+        .map(email => email.trim())
+        .filter(Boolean);
+
+    if (extraRecipients.length > 0) {
+        topicData.extra_recipient_emails = [...new Set(extraRecipients.map(email => email.toLowerCase()))]
+            .map(lowered => extraRecipients.find(email => email.toLowerCase() === lowered));
+    } else {
+        delete topicData.extra_recipient_emails;
+    }
+
+    if (isV2) {
+        // V2 Topic - update task field
+        topicData.task = document.getElementById('task').value;
+
+        if (topicType === 'book' && document.getElementById('author')) {
+            topicData.author = document.getElementById('author').value;
+        }
+
+        if (document.getElementById('timeline')) {
+            topicData.timeline = document.getElementById('timeline').value;
+        }
+    } else {
+        // Legacy V1 Topic - update individual fields
+        topicData.goal = document.getElementById('goal').value;
+        topicData.scope = document.getElementById('scope').value;
+
+        if (topicType === 'book') {
+            const authorLegacy = document.getElementById('author_legacy');
+            if (authorLegacy) topicData.author = authorLegacy.value;
+
+            const authorVoice = document.getElementById('author_voice');
+            if (authorVoice) topicData.author_voice = authorVoice.value;
+
+            const pacing = document.getElementById('pacing');
+            if (pacing) topicData.pacing = pacing.value;
+
+            const pdfPath = document.getElementById('pdf_path');
+            if (pdfPath) topicData.pdf_path = pdfPath.value;
+
+            const currentPage = document.getElementById('current_page');
+            if (currentPage) topicData.current_page = parseInt(currentPage.value) || 1;
+        }
+    }
+
+    try {
+        const response = await fetch(`/topics/${topicId}/save`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(topicData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            window.location.href = '/topics';
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error saving topic: ' + error);
+    }
+});
+</script>
+{% endblock %}

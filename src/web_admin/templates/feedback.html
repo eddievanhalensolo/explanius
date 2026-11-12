@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback & Preferences - Explanius Admin{% endblock %}
+
+{% block content %}
+<div class="feedback-page">
+    <h1>Feedback & Preferences</h1>
+
+    <!-- Learned Preferences Section -->
+    <section class="preferences-section">
+        <div class="section-header">
+            <h2>Current Learned Preferences</h2>
+            <div class="header-actions">
+                <button id="edit-btn" class="btn btn-secondary" onclick="toggleEdit()">Edit</button>
+                <button id="save-btn" class="btn btn-primary" onclick="savePreferences()" style="display: none;">Save</button>
+                <button id="cancel-btn" class="btn btn-ghost" onclick="cancelEdit()" style="display: none;">Cancel</button>
+            </div>
+        </div>
+        <div class="preferences-content">
+            <div id="preferences-view" class="preferences-text">{{ learned_preferences }}</div>
+            <textarea id="preferences-edit" class="preferences-editor" style="display: none;">{{ learned_preferences }}</textarea>
+        </div>
+        <p class="preferences-hint">These preferences are injected into every content generation. Edit carefully.</p>
+    </section>
+
+    <!-- Stats Summary -->
+    <section class="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>{{ summary.get('total_global', 0) }}</h3>
+                <p>Global Feedbacks</p>
+            </div>
+            {% for topic, count in summary.get('topic_counts', {}).items() %}
+                <div class="stat-card topic-stat">
+                    <h3>{{ count }}</h3>
+                    <p>{{ topic }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Global Feedback Log -->
+    <section class="feedback-section">
+        <h2>Global Feedback Log</h2>
+        <p class="section-hint">These feedbacks were classified as "global" (style/structure preferences) and used for preference synthesis.</p>
+
+        {% if global_feedbacks %}
+            <div class="feedback-list">
+                {% for entry in global_feedbacks %}
+                    <div class="feedback-card" data-index="{{ loop.index0 }}">
+                        <div class="feedback-header">
+                            <div class="feedback-meta">
+                                <span class="feedback-date">{{ entry.get('date', '')[:10] }}</span>
+                                <span class="feedback-topic">{{ entry.get('topic_id', 'unknown') }}</span>
+                                {% if entry.get('topic_type') %}
+                                    <span class="feedback-type type-{{ entry.get('topic_type', 'general') }}">{{ entry.get('topic_type', 'general') }}</span>
+                                {% endif %}
+                                {% if entry.get('has_persona') %}
+                                    <span class="feedback-persona">has persona</span>
+                                {% endif %}
+                            </div>
+                            <button class="btn-delete" onclick="deleteFeedback({{ entry.get('_original_index', loop.index0) }})" title="Delete this feedback">×</button>
+                        </div>
+
+                        <div class="feedback-text">
+                            {{ entry.get('feedback', 'No feedback text')[:500] }}
+                            {% if entry.get('feedback', '')|length > 500 %}...{% endif %}
+                        </div>
+
+                        {% if entry.get('content') %}
+                            <details class="feedback-context">
+                                <summary>Show content excerpt</summary>
+                                <div class="context-content">{{ entry.get('content', '')[:800] }}...</div>
+                            </details>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">No global feedbacks yet. Feedbacks about style, structure, and tone will appear here.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.feedback-page {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.feedback-page h1 {
+    margin-bottom: 32px;
+}
+
+/* Preferences Section */
+.preferences-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.preferences-text {
+    background: var(--bg);
+    padding: 20px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.preferences-editor {
+    width: 100%;
+    min-height: 300px;
+    padding: 20px;
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.95em;
+    line-height: 1.6;
+    resize: vertical;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.preferences-hint {
+    margin-top: 12px;
+    font-size: 0.85em;
+    color: var(--text-light);
+}
+
+/* Stats Section */
+.stats-section {
+    margin-bottom: 32px;
+}
+
+.stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 20px;
+    border-radius: 8px;
+    min-width: 120px;
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 2em;
+    margin: 0;
+    color: var(--primary);
+}
+
+.stat-card p {
+    margin: 8px 0 0;
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.topic-stat {
+    background: var(--bg);
+}
+
+/* Feedback Section */
+.feedback-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+.feedback-section h2 {
+    margin: 0 0 8px;
+    font-size: 1.3em;
+}
+
+.section-hint {
+    color: var(--text-light);
+    font-size: 0.9em;
+    margin-bottom: 20px;
+}
+
+.feedback-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feedback-card {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 16px;
+    border-left: 4px solid var(--primary);
+}
+
+.feedback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.feedback-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.feedback-date {
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.feedback-topic {
+    background: var(--bg);
+    color: var(--primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    border: 1px solid var(--border);
+}
+
+.feedback-type {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 500;
+    background: var(--bg);
+    color: var(--text-light);
+    border: 1px solid var(--border);
+}
+
+.feedback-type.type-book {
+    color: var(--primary);
+}
+
+.feedback-type.type-general {
+    color: var(--success);
+}
+
+.feedback-persona {
+    background: var(--bg);
+    color: var(--secondary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    border: 1px solid var(--border);
+}
+
+.btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+}
+
+.btn-delete:hover {
+    color: var(--danger);
+}
+
+.feedback-text {
+    color: var(--text);
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.feedback-context {
+    margin-top: 12px;
+}
+
+.feedback-context summary {
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: 0.85em;
+}
+
+.context-content {
+    margin-top: 8px;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--text-light);
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-light);
+    padding: 40px;
+}
+
+/* Buttons */
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+.btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--border);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-light);
+}
+
+.btn-ghost:hover {
+    background: var(--bg);
+}
+</style>
+
+<script>
+let originalPreferences = '';
+
+function toggleEdit() {
+    const viewEl = document.getElementById('preferences-view');
+    const editEl = document.getElementById('preferences-edit');
+    const editBtn = document.getElementById('edit-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    originalPreferences = editEl.value;
+
+    viewEl.style.display = 'none';
+    editEl.style.display = 'block';
+    editBtn.style.display = 'none';
+    saveBtn.style.display = 'inline-block';
+    cancelBtn.style.display = 'inline-block';
+
+    editEl.focus();
+}
+
+function cancelEdit() {
+    const viewEl = document.getElementById('preferences-view');
+    const editEl = document.getElementById('preferences-edit');
+    const editBtn = document.getElementById('edit-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+
+    editEl.value = originalPreferences;
+
+    viewEl.style.display = 'block';
+    editEl.style.display = 'none';
+    editBtn.style.display = 'inline-block';
+    saveBtn.style.display = 'none';
+    cancelBtn.style.display = 'none';
+}
+
+async function savePreferences() {
+    const editEl = document.getElementById('preferences-edit');
+    const newPreferences = editEl.value.trim();
+
+    if (!newPreferences) {
+        alert('Preferences cannot be empty');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ preferences: newPreferences })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Update the view
+            document.getElementById('preferences-view').textContent = newPreferences;
+            cancelEdit();
+            alert('Preferences saved!');
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error saving preferences: ' + err.message);
+    }
+}
+
+async function deleteFeedback(index) {
+    if (!confirm('Delete this feedback entry? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/feedback/${index}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Reload the page to reflect changes
+            location.reload();
+        } else {
+            alert('Error: ' + (result.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error deleting feedback: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

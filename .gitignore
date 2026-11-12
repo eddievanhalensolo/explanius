@@ -1,0 +1,55 @@
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (contains user-specific content)
+data/chat_histories/*
+data/profiles/*
+!data/chat_histories/.gitkeep
+!data/profiles/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Backups
+backups/
+
+# Sensitive
+*.key
+*.pem
+credentials.json
+
+# Claude Code (local tooling state — worktrees, scratch copies)
+.claude/
+
+# Personal data: only the example topic is tracked
+data/*
+!data/topics/
+data/topics/*
+!data/topics/example_topic.json
+!data/chat_histories/
+!data/user_preferences/
+data/user_preferences/*
+!data/user_preferences/.gitkeep

@@ -1,0 +1,25 @@
+# Flask Web Admin Requirements
+
+# Web Framework
+Flask>=3.0.0
+Werkzeug>=3.0.0
+gunicorn>=22.0.0
+
+# Security
+Flask-WTF>=1.2.1          # CSRF protection
+Flask-Limiter>=3.5.0      # login rate limiting
+pyotp>=2.9.0              # TOTP second factor
+
+# Google Cloud
+google-genai>=0.3.2
+google-cloud-storage>=2.10.0
+google-cloud-secret-manager>=2.16.0
+google-auth>=2.0.0
+
+# LLM Clients (for smart_suggester)
+openai>=1.0.0
+anthropic>=0.40.0
+json-repair>=0.30.0
+
+# Utilities
+python-dotenv>=1.0.1
